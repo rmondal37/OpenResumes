@@ -1,17 +1,19 @@
-from openresume.settings import BASE_DIR
+from openresume.settings import BASE_DIR,MEDIA_ROOT,STATIC_DIR
 from pathlib import Path
-from percent_rem import percentReplacerString
-from percent_rem import percentReplacerDict
+from .percent_rem import percentReplacerString
+from .percent_rem import percentReplacerDict
 import os
 
+LATEX_ROOT = os.path.join(STATIC_DIR,'latex')
 
-def createTextFile(name,rollno,stream,branch,minor,college,email,iitgmail,mobileno,linkedin,education,internships,projects,techskills,keyCourses,por,achievements):
+def createTextFile(latex_file_name,name,rollno,stream,branch,minor,college,email,iitgmail,mobileno,linkedin,education,internships,projects,techskills,keyCourses,por,achievements):
     
     PDFGEN_DIR = os.path.join(BASE_DIR,'app')
 
     base_file_path = os.path.join(PDFGEN_DIR,"base.txt")
-    latexFile_path = os.path.join(BASE_DIR,"latexFile.tex")
+    latexFile_path = os.path.join(LATEX_ROOT,latex_file_name)
 
+    print(str(latexFile_path))
     readfile = open(str(base_file_path),"rt")
     writefile=open(str(latexFile_path),"w")
 
@@ -26,29 +28,46 @@ def createTextFile(name,rollno,stream,branch,minor,college,email,iitgmail,mobile
     writefile.write(r"\textbf{\huge "+name+r"}\\")
     writefile.write("\n")
 
-    for i in range(87,91):
+    calculation_list = {"left":[ 
+                                len('Roll No. 190101037'),
+                                len(stream + ' - '+branch),
+                                len(college),
+                                len(minor),
+                            ],
+                            "right":[
+                                len(email),
+                                len(mobileno),
+                                len(iitgmail),
+                                len(linkedin),
+                            ]
+                        }
+    hskip_value = hskip_measure(calculation_list)
+
+    writefile.write(r"\begin{tabular*}{\textwidth}{l@{\hskip" + str(hskip_value) +r"cm}r}")
+
+    for i in range(88,91):
         writefile.write(lines[i])
+    
+    
 
     if (minor!=""):
         writefile.write(r"{Roll No. "+rollno+r"}&\href{mailto:"+email+r"}{ "+email+r"}\\")
         writefile.write("\n")
-        writefile.write(r"{"+stream+r"}& Mobile : "+mobileno+r"\\")
+        writefile.write(r"{"+stream +" - "+ branch + r"}& Mobile : "+mobileno+r"\\")
         writefile.write("\n")
-        writefile.write(r"{"+branch+r"}&\href{mailto:"+iitgmail+r"}{ "+iitgmail+r"}\\")
+        writefile.write(r"{Minor in "+minor+r"}&\href{mailto:"+iitgmail+r"}{ "+iitgmail+r"}\\")
         writefile.write("\n")
-        writefile.write(r"{Minor in "+minor+r"} & \href{"+linkedin+r"/}{"+linkedin+r"}\\")
+        writefile.write(r"{"+ college +r"} & \href{"+linkedin+r"/}{"+linkedin+r"}\\")
         writefile.write("\n")
-        writefile.write(r"{"+college+r"}&{}")
-        # writefile.write(r"{Minor in "+minor+r"}&{}")
     #else
     else:
         writefile.write(r"{Roll No. "+rollno+r"}&\href{mailto:"+email+r"}{ "+email+r"}\\")
         writefile.write("\n")
-        writefile.write(r"{"+stream+r"}& Mobile : "+mobileno+r"\\")
+        writefile.write(r"{"+stream +" - "+ branch + r"}& Mobile : "+mobileno+r"\\")
         writefile.write("\n")
-        writefile.write(r"{"+branch+r"}&\href{mailto:"+iitgmail+r"}{ "+iitgmail+r"}\\")
+        writefile.write(r"{"+ college +r"}&\href{mailto:"+iitgmail+r"}{ "+iitgmail+r"}\\")
         writefile.write("\n")
-        writefile.write(r"{"+college+"} & \href{"+linkedin+r"/}{"+linkedin+r"}")
+        writefile.write(r"{"+"} & \href{"+linkedin+r"/}{"+linkedin+r"}")
         writefile.write("\n")
 
     #write some static code
@@ -60,7 +79,10 @@ def createTextFile(name,rollno,stream,branch,minor,college,email,iitgmail,mobile
     for sublist in education:
         if(sublist[0]!=""):
             for i in range(len(sublist)):
-                sublist[i]=percentReplacerString(sublist[i])
+                # sublist[i]=percentReplacerString(sublist[i])
+                sublist[i]=sublist[i].replace('%',r'\%')
+                sublist[i]=sublist[i].replace('_',r'\_')
+
             writefile.write(r"\hline "+sublist[0] +r"& "+sublist[1]+ r"& "+sublist[2] +r"& "+sublist[3] +r"\\")
             writefile.write("\n")
    
@@ -88,14 +110,14 @@ def createTextFile(name,rollno,stream,branch,minor,college,email,iitgmail,mobile
         for sublist in internships:
             if (sublist[0] != ""):
                 writefile.write(r"\resumeSubItem{" + sublist[0] + r"}")
-                writefile.write(r" " + r"{" + sublist[1]  + r"}" + r"\\")
+                writefile.write(r" " + r"{" + sublist[1]  + r"}" + r"")
                 writefile.write("\n")
         writefile.write(r"\resumeSubHeadingListEnd")
 
 
 
     #write some static code
-    for i in range(119,126):
+    for i in range(119,125):
         writefile.write(lines[i])
 
     proFlag = False
@@ -104,16 +126,18 @@ def createTextFile(name,rollno,stream,branch,minor,college,email,iitgmail,mobile
             proFlag = True
             break
     if(proFlag):
+        writefile.write(lines[125])
         writefile.write(lines[126])
         writefile.write(lines[127])
     #Projects Dynamic code
     #projects=[["title1","club1","desc1","link1","date1"],["title2","club2","desc2","link2","date2"],["title3","club3","desc3","link3","date3"],["title4","club4","desc4","link4","date4"]]
     for sublist in projects:
+        sublist_3_str = percentReplacerString(sublist[3])
         for i in range(len(sublist)):
             if(i!=3):
                 sublist[i]=percentReplacerString(sublist[i])
         if(sublist[0]!="" and sublist[1]!="" and sublist[2]!="" and sublist[3]!="" and sublist[4]!=""):
-            writefile.write(r"\resumeSubheading{"+sublist[0]+r"}{"+sublist[4]+r"}{"+sublist[1]+r"}{\href{"+sublist[3]+r"}{\textit{\small "+sublist[3]+r"   }}}")
+            writefile.write(r"\resumeSubheading{"+sublist[0]+r"}{"+sublist[4]+r"}{"+sublist[1]+r"}{\href{"+sublist[3]+r"}{\textit{\small "+sublist_3_str+r"   }}}")
             writefile.write("\n")
             writefile.write(r"\begin{itemize}")
             writefile.write("\n")
@@ -130,7 +154,7 @@ def createTextFile(name,rollno,stream,branch,minor,college,email,iitgmail,mobile
     if(proFlag):
         writefile.write(lines[152])
 
-    for i in range(153,162):
+    for i in range(153,161):
         writefile.write(lines[i])
 
     tsFlag = False
@@ -140,37 +164,42 @@ def createTextFile(name,rollno,stream,branch,minor,college,email,iitgmail,mobile
             break
 
     if(tsFlag):
+        writefile.write(lines[161])
         writefile.write(lines[162])
         writefile.write(lines[163])
-    #Technical Skills Dynamic code
-    #techskills=["pllang","webtech","dbms","os","miscell","otherskills"]
-    for i in range(len(techskills)):
-        techskills[i]=percentReplacerString(techskills[i])
-    if(techskills[0]!=""):
-        writefile.write(r"\resumeSubItem{Programming Languages}{"+techskills[0]+r"}")
-        writefile.write("\n")
-    if(techskills[1]!=""):
-        writefile.write(r"\resumeSubItem{Web Technologies}{"+techskills[1]+r"}")
-        writefile.write("\n")
-    if(techskills[2]!=""):
-        writefile.write(r"\resumeSubItem{DBMS}{"+techskills[2]+r"}")
-        writefile.write("\n")
-    if(techskills[3]!=""):
-        writefile.write(r"\resumeSubItem{OS}{"+techskills[3]+r"}")
-        writefile.write("\n")
-    if(techskills[4]!=""):
-        writefile.write(r"\resumeSubItem{Miscelleneous}{"+techskills[4]+r"}")
-        writefile.write("\n")
-    if(techskills[5]!=""):
-        writefile.write(r"\resumeSubItem{Other Skills}{"+techskills[5]+r"}")
-        writefile.write("\n")
+        #Technical Skills Dynamic code
+        #techskills=["pllang","webtech","dbms","os","miscell","otherskills"]
+        for key in techskills.keys():
+            if(techskills[key]!=""):
+                writefile.write(r"\resumeSubItem{"+ key +r"}{" +techskills[key] + r"}")
+                writefile.write("\n")
+        """
+        for i in range(len(techskills)):
+            techskills[i]=percentReplacerString(techskills[i])
+        if(techskills[0]!=""):
+            writefile.write(r"\resumeSubItem{Programming Languages}{"+techskills[0]+r"}")
+            writefile.write("\n")
+        if(techskills[1]!=""):
+            writefile.write(r"\resumeSubItem{Web Technologies}{"+techskills[1]+r"}")
+            writefile.write("\n")
+        if(techskills[2]!=""):
+            writefile.write(r"\resumeSubItem{DBMS}{"+techskills[2]+r"}")
+            writefile.write("\n")
+        if(techskills[3]!=""):
+            writefile.write(r"\resumeSubItem{OS}{"+techskills[3]+r"}")
+            writefile.write("\n")
+        if(techskills[4]!=""):
+            writefile.write(r"\resumeSubItem{Miscelleneous}{"+techskills[4]+r"}")
+            writefile.write("\n")
+        if(techskills[5]!=""):
+            writefile.write(r"\resumeSubItem{Other Skills}{"+techskills[5]+r"}")
+            writefile.write("\n")
+        """
+
+        #write some static code
+        for i in range(170,174):
+            writefile.write(lines[i])
     
-    #write some static code
-    for i in range(170,173):
-        writefile.write(lines[i])
-    
-    if(tsFlag):
-        writefile.write(lines[173])
 
     for i in range(174,186):
         writefile.write(lines[i])
@@ -192,7 +221,7 @@ def createTextFile(name,rollno,stream,branch,minor,college,email,iitgmail,mobile
             writefile.write("\n")
     
     #write some static code
-    for i in range(194,206):
+    for i in range(194,205):
         writefile.write(lines[i])
 
 
@@ -203,6 +232,7 @@ def createTextFile(name,rollno,stream,branch,minor,college,email,iitgmail,mobile
             break
 
     if(porFlag):
+        writefile.write(lines[205])
         writefile.write(lines[206])
         writefile.write(lines[207])
     #POR Dynamic code
@@ -229,7 +259,7 @@ def createTextFile(name,rollno,stream,branch,minor,college,email,iitgmail,mobile
         writefile.write(lines[232])
         writefile.write(lines[233])
     
-    for i in range(234,242):
+    for i in range(234,241):
         writefile.write(lines[i])
 
     achFlag = False
@@ -238,6 +268,7 @@ def createTextFile(name,rollno,stream,branch,minor,college,email,iitgmail,mobile
             achFlag = True
             break
     if(achFlag):
+        writefile.write(lines[241])
         writefile.write(lines[242])
     writefile.write(lines[243])
     #Achievements Dynamic code
@@ -256,7 +287,22 @@ def createTextFile(name,rollno,stream,branch,minor,college,email,iitgmail,mobile
     for i in range(252,256):
         writefile.write(lines[i])
 
+def hskip_measure(calculation_list):
+    max1 = -1
+    max2 = -2
+    letter_per_cm = 5.77
+    length_for_text = 15.75
+    total_letters_allowed = 90
+    for val in calculation_list["left"]:
+        max1 = max(max1, val)
+    for val in calculation_list["right"]:
+        max2 = max(max2, val)
+    total_nos = max1+max2
+    total_length = round(total_nos/letter_per_cm,2)
 
+    return length_for_text - total_length
+    
+    
 
 """
 createTextFile(name="Nikitha",rollno="190102052",stream="Btech",branch="ECE",minor="CSE",college="IITG",
