@@ -29,6 +29,8 @@ def index(request,pk):
     # initialize the dictionary to be sent to the template.
     my_dict = {}
 
+    if Resume.objects.filter(id = pk).count()==0:
+        return render(request, 'pdfgen/wrongIndex.html')
     
     # collected the details of the user.
     us = User.objects.get(username = request.user)
@@ -42,6 +44,8 @@ def index(request,pk):
         return render(request,'pdfgen/wrongIndex.html')
 
     #count of each section fields to be looped in the template.
+
+    
 
     project_list = list(resume_mod.projects_set.all())
     course_list = list(resume_mod.course_set.all())
@@ -99,10 +103,16 @@ def index(request,pk):
 
     if os.path.getsize('static/'+pdf_string)==0:
         pdf_string = 'data/display_resume.pdf'
-        
-    my_dict['pdf_string'] = pdf_string
-
     
+    if os.path.isfile(os.path.join(PDFS_ROOT, resume_mod.pdfFile)) == False:
+        pdf_string = 'data/display_resume.pdf'
+        open(os.path.join(PDFS_ROOT,resume_mod.pdfFile),'w').close()
+        # print("hululu")
+        
+    
+
+    my_dict['pdf_string'] = pdf_string
+    my_dict['resume'] = resume_mod     
 
     """****************************************************************************************************************************"""
 
@@ -111,6 +121,22 @@ def index(request,pk):
 
         #input dictionary
         md = request.POST
+
+        if(md['delete_flag']=='true'):
+            del_res = resume_mod
+
+            delete_pdf_file = str(del_res.pdfFile)
+            delete_latex_file = str(del_res.latexFile)
+
+            delete_pdf_file = 'static/pdfs/'+delete_pdf_file
+            delete_latex_file = 'static/latex/'+delete_latex_file
+
+            os.remove(delete_pdf_file)
+            os.remove(delete_latex_file)
+            del_res.delete()
+            return redirect('/OpenResumes')
+
+
     
         
         print(md) 
@@ -315,9 +341,6 @@ def index(request,pk):
         pro_model.mobile=str(md['mobile'])
         pro_model.linkedIn=md['linkedIn']
         pro_model.save()           
-
-        if md['save_flag']=="true":
-            return redirect('/index/'+str(pk)+'/')
         
 
         #generating the LaTex file 
@@ -350,7 +373,7 @@ def index(request,pk):
         # os.remove(plain_name + '.out')
         # os.remove(plain_name + '.log')
         
-        return redirect('/index/'+str(pk)+'/')
+        return redirect('/OpenResumes/index/'+str(pk)+'/')
        
     return render(request,'app/index.html',context = my_dict)
 
@@ -418,13 +441,22 @@ def home(request):
             os.remove(delete_pdf_file)
             os.remove(delete_latex_file)
             del_res.delete()
-            return redirect('/')
+            return redirect('/OpenResumes')
 
-
+	if requestDir["renameResume"]=="":
+            print("rename form print...")
+        else: 
+            pk=requestDir["renameResumeId"]
+            res_mod=Resume.objects.get(pk=pk)
+            res_mod.name=requestDir["renameResume"]
+            res_mod.save()
+            print("saved .....")
+            return redirect('/OpenResumes')
         if requestDir["newResume"]=="":
             print("form submitted successfully..")
-            return redirect('/')
-        else:
+            return redirect('/OpenResumes')
+        
+        if requestDir["newResume"]!="":
             #creating a new instance and setting the parameters when ever a user request for new resume generation..
             resume_mod = Resume()
             resume_mod.name = requestDir["newResume"]
@@ -433,9 +465,10 @@ def home(request):
 
             #setting the object attributes
             
-         
-            new_pdf_file_name = 'latexFile_'+str(resume_id)+'.pdf'
-            new_latex_file_name = 'latexFile_'+str(resume_id)+'.tex'
+            new_pdf_file_name = str(us.last_name)+'_' + resume_mod.name.replace(' ', '_') + '.pdf'
+            new_latex_file_name = str(us.last_name)+'_' + resume_mod.name.replace(' ', '_') + '.tex'
+            # new_pdf_file_name = 'latexFile_'+str(resume_id)+'.pdf'
+            # new_latex_file_name = 'latexFile_'+str(resume_id)+'.tex'
             open(os.path.join(PDFS_ROOT,new_pdf_file_name),'w').close()
             open(os.path.join(LATEX_ROOT,new_latex_file_name),'w').close()
             
@@ -446,7 +479,13 @@ def home(request):
             resume_mod.latexFile = new_latex_file_name
 
             resume_mod.save()
-            pro_mod=Profile(resume=resume_mod)
+            res_mod_stream = ""
+            if str(us.last_name)[2]== "0":
+                res_mod_stream = 'B.Tech'
+            else:
+                res_mod_stream = 'PG'
+            pro_mod=Profile(resume=resume_mod, name = us.first_name, roll = us.last_name,
+                            webmail = us.username, programme = deptList[str(us.last_name)[4:6]], stream =  res_mod_stream)
             pro_mod.save()
             # tech_mod=Techskills(resume=resume_mod)
             # tech_mod.save()
@@ -454,11 +493,35 @@ def home(request):
             edu_mod.save()
             res_rel.resumes.add(resume_mod)
 
-            redirect_url = '/index/'+str(resume_mod.id)+'/'
+            redirect_url = '/OpenResumes/index/'+str(resume_mod.id)+'/'
             print(redirect_url)
             return redirect(redirect_url)
 
     return render(request,'app/home.html',context = home_dict)
+
+
+deptList ={
+    '01': 'CSE',
+    '02': 'ECE',
+    '03': 'ME',
+    '04': 'Civil',
+    '05': 'Design',
+    '06': 'BSBE',
+    '07': 'CL',
+    '08': 'EEE',
+    '21': 'Physics',
+    '22': 'Chemistry',
+    '23': 'MNC',
+    '41': 'HSS',
+    '51': 'Energy',
+    '52': 'Environment',
+    '53': 'Nano-Tech',
+    '54': 'Rural-Tech',
+    '55': 'Linguistics',
+	'61': 'Others',
+	'62': 'Others',
+	'63': 'Others',
+}
 
 """
 def send(request):
